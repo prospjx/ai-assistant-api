@@ -1,0 +1,77 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AI Assistant API",
+    "version": "1.0.0",
+    "description": "API contract for the Smart Course Scheduler - AI Assistant API. Analyzes schedules and provides smart feedback."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/analyze": {
+      "post": {
+        "summary": "Analyze Schedule",
+        "description": "Receives a proposed schedule and student profile, calls out to external LLM, and returns AI-generated suggestions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "student_profile": {
+                    "type": "object",
+                    "description": "Student preferences and constraints"
+                  },
+                  "schedule": {
+                    "type": "object",
+                    "description": "The generated schedule layout"
+                  }
+                },
+                "required": [
+                  "student_profile",
+                  "schedule"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI Insights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "string",
+                      "example": "This schedule is well-balanced."
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": ["Heavy workload on Tuesdays."]
+                    },
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": ["Consider moving a class to Wednesday."]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
