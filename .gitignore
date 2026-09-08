@@ -8,6 +8,7 @@ ENV/
 .env
 .env.local
 *.env
+*secrets.yaml
 
 # Python Cache & Bytecode
 __pycache__/
@@ -21,3 +22,21 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Database & SQLite files (if you use local persistent DBs)
+*.db
+*.sqlite3
+
+# Log files
+*.log
+logs/
+
+# Test coverage reports & HTML output
+htmlcov/
+.coverage.*
+
+# Build artifacts & package distributions
+build/
+dist/
+*.egg-info/
+

@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-assistant-api-deployment
+  labels:
+    app: ai-assistant-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-assistant-api
+  template:
+    metadata:
+      labels:
+        app: ai-assistant-api
+    spec:
+      containers:
+        - name: ai-assistant-api
+          image: prospjx/ai-assistant-api:latest
+          ports:
+            - containerPort: 8003
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-assistant-api-secret
+                  key: GEMINI_API_KEY
+            - name: GEMINI_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: ai-assistant-api-secret
+                  key: GEMINI_MODEL
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-assistant-api-secret
+                  key: PORT
+            - name: HOST
+              valueFrom:
+                secretKeyRef:
+                  name: ai-assistant-api-secret
+                  key: HOST
