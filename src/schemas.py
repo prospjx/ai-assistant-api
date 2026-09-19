@@ -1,52 +1,62 @@
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+
 
 class AnalyzeRequest(BaseModel):
-    student_profile: Dict[str, Any]
-    schedule: Dict[str, Any]
+    student_profile: dict[str, Any]
+    schedule: dict[str, Any]
+
 
 class AIInsightsResponse(BaseModel):
     summary: str
-    warnings: List[str]
-    suggestions: List[str]
+    warnings: list[str]
+    suggestions: list[str]
+
 
 # --- Screenshot Extraction Schemas ---
 class ExtractedClass(BaseModel):
     course_id: str
     title: str
-    day: str             # Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-    start_time: str      # HH:MM (24-hour)
-    end_time: str        # HH:MM (24-hour)
-    location: Optional[str] = "TBD"
+    day: str  # Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+    start_time: str  # HH:MM (24-hour)
+    end_time: str  # HH:MM (24-hour)
+    location: str | None = "TBD"
+
 
 class ExtractScheduleResponse(BaseModel):
     success: bool
     message: str
-    extracted_classes: List[ExtractedClass]
+    extracted_classes: list[ExtractedClass]
+
 
 # --- Full Life Routine Schedule Schemas ---
 class RoutineBlock(BaseModel):
-    day: str             # Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-    start_time: str      # HH:MM
-    end_time: str        # HH:MM
-    activity_type: str   # Class, Transit, Study, Gym, Sleep, Wakeup, Meal, Personal
-    title: str           # e.g., "CS-3410 Lecture", "Transit to Campus", "Morning Gym", "Deep Study: Algorithms"
-    location: Optional[str] = None
-    description: Optional[str] = None
+    day: str  # Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+    start_time: str  # HH:MM
+    end_time: str  # HH:MM
+    activity_type: str  # Class, Transit, Study, Gym, Sleep, Wakeup, Meal, Personal
+    title: str  # e.g., "CS-3410 Lecture", "Transit to Campus", "Morning Gym", "Deep Study: Algorithms"
+    location: str | None = None
+    description: str | None = None
+
 
 # Concrete model instead of Dict[str, ...] to comply with Gemini Developer API schema constraints
 class DayRoutine(BaseModel):
     day: str
-    activities: List[RoutineBlock]
+    activities: list[RoutineBlock]
+
 
 class FullLifeScheduleGenaiResponse(BaseModel):
-    days: List[DayRoutine]
+    days: list[DayRoutine]
     ai_insights: AIInsightsResponse
 
+
 class FullLifeScheduleRequest(BaseModel):
-    student_profile: Dict[str, Any]
-    enrolled_classes: List[ExtractedClass]
+    student_profile: dict[str, Any]
+    enrolled_classes: list[ExtractedClass]
+
 
 class FullLifeScheduleResponse(BaseModel):
-    weekly_routine: Dict[str, List[RoutineBlock]]
+    weekly_routine: dict[str, list[RoutineBlock]]
     ai_insights: AIInsightsResponse

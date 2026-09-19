@@ -1,20 +1,22 @@
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Any
+
 from google import genai
 from google.genai import types
 
+from src.config import GEMINI_API_KEY, GEMINI_MODEL
 from src.schemas import (
     AIInsightsResponse,
-    ExtractScheduleResponse,
     ExtractedClass,
-    FullLifeScheduleResponse,
+    ExtractScheduleResponse,
     FullLifeScheduleGenaiResponse,
-    RoutineBlock
+    FullLifeScheduleResponse,
+    RoutineBlock,
 )
-from src.config import GEMINI_API_KEY, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
+
 
 def _get_genai_client() -> genai.Client:
     if not GEMINI_API_KEY or GEMINI_API_KEY == "your_gemini_api_key_here":
@@ -25,14 +27,16 @@ def _get_genai_client() -> genai.Client:
     return genai.Client(api_key=GEMINI_API_KEY)
 
 
-async def generate_ai_insights(student_profile: Dict[str, Any], schedule: Dict[str, Any]) -> AIInsightsResponse:
+async def generate_ai_insights(
+    student_profile: dict[str, Any], schedule: dict[str, Any]
+) -> AIInsightsResponse:
     """
     Analyzes student profile and proposed schedule using Google Gemini,
     returning structured insights (summary, warnings, and suggestions).
     """
     try:
         client = _get_genai_client()
-        
+
         prompt = f"""
 You are an expert academic advisor AI. Analyze the following student profile and proposed course schedule.
 Provide actionable, intelligent insights on workload balance, degree progression, prerequisite concerns, and study stress.
@@ -58,7 +62,7 @@ Provide your analysis strictly matching the requested JSON schema with:
                 temperature=0.2,
             ),
         )
-        
+
         if response.text:
             parsed_data = json.loads(response.text)
             return AIInsightsResponse(**parsed_data)
@@ -70,18 +74,24 @@ Provide your analysis strictly matching the requested JSON schema with:
         return AIInsightsResponse(
             summary="Schedule analysis is running in offline mode (API key not configured).",
             warnings=[str(ve)],
-            suggestions=["Set your GEMINI_API_KEY in the .env file to enable live AI insights."]
+            suggestions=[
+                "Set your GEMINI_API_KEY in the .env file to enable live AI insights."
+            ],
         )
     except Exception as e:
-        logger.error(f"Error calling Gemini API: {e}", exc_info=True)
+        logger.exception("Error calling Gemini API")
         return AIInsightsResponse(
             summary="Unable to generate full AI insights at this time.",
-            warnings=[f"AI Service Error: {str(e)}"],
-            suggestions=["Please verify your Gemini API key and network connection, then try again."]
+            warnings=[f"AI Service Error: {e!s}"],
+            suggestions=[
+                "Please verify your Gemini API key and network connection, then try again."
+            ],
         )
 
 
-async def extract_schedule_from_image(image_bytes: bytes, mime_type: str = "image/png") -> ExtractScheduleResponse:
+async def extract_schedule_from_image(
+    image_bytes: bytes, mime_type: str = "image/png"
+) -> ExtractScheduleResponse:
     """
     Extracts class schedule information from an uploaded timetable screenshot using Gemini multimodal vision.
     """
@@ -126,17 +136,16 @@ Return strictly the JSON matching the ExtractScheduleResponse schema.
             raise ValueError("No text response from Gemini vision model.")
 
     except Exception as e:
-        logger.error(f"Error extracting schedule from image: {e}", exc_info=True)
+        logger.exception("Error extracting schedule from image")
         return ExtractScheduleResponse(
             success=False,
-            message=f"Failed to extract schedule from image: {str(e)}",
-            extracted_classes=[]
+            message=f"Failed to extract schedule from image: {e!s}",
+            extracted_classes=[],
         )
 
 
 async def generate_full_life_schedule(
-    student_profile: Dict[str, Any],
-    enrolled_classes: List[ExtractedClass]
+    student_profile: dict[str, Any], enrolled_classes: list[ExtractedClass]
 ) -> FullLifeScheduleResponse:
     """
     Synthesizes a complete daily and weekly life schedule integrating academic classes with:
@@ -146,7 +155,15 @@ async def generate_full_life_schedule(
     - Gym / workout routines
     - Meals and personal time
     """
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
 
     try:
         client = _get_genai_client()
@@ -198,9 +215,9 @@ Also generate comprehensive AI insights (summary, warnings, and suggestions) ana
         if response.text:
             data = json.loads(response.text)
             genai_resp = FullLifeScheduleGenaiResponse(**data)
-            
+
             # Convert days array into standard weekly_routine mapping
-            routine_map: Dict[str, List[RoutineBlock]] = {d: [] for d in days}
+            routine_map: dict[str, list[RoutineBlock]] = {d: [] for d in days}
             for day_obj in genai_resp.days:
                 day_name = day_obj.day.capitalize()
                 if day_name in routine_map:
@@ -209,71 +226,82 @@ Also generate comprehensive AI insights (summary, warnings, and suggestions) ana
                     routine_map[day_name] = day_obj.activities
 
             return FullLifeScheduleResponse(
-                weekly_routine=routine_map,
-                ai_insights=genai_resp.ai_insights
+                weekly_routine=routine_map, ai_insights=genai_resp.ai_insights
             )
         else:
             raise ValueError("No text response from Gemini model.")
 
     except Exception as e:
-        logger.error(f"Error generating full life schedule: {e}", exc_info=True)
+        logger.exception("Error generating full life schedule")
         # Fallback heuristic schedule generation
-        weekly_routine: Dict[str, List[RoutineBlock]] = {d: [] for d in days}
+        weekly_routine: dict[str, list[RoutineBlock]] = {d: [] for d in days}
         prefs = student_profile.get("preferences", {})
         wake = prefs.get("wake_up_time", "07:00")
         sleep = prefs.get("sleep_time", "23:00")
-        transit_mins = prefs.get("transit_time_minutes", 45)
 
         # Populate classes
         for c in enrolled_classes:
             day = c.day.capitalize()
             if day in weekly_routine:
-                weekly_routine[day].append(RoutineBlock(
-                    day=day,
-                    start_time=c.start_time,
-                    end_time=c.end_time,
-                    activity_type="Class",
-                    title=f"{c.course_id} - {c.title}",
-                    location=c.location
-                ))
+                weekly_routine[day].append(
+                    RoutineBlock(
+                        day=day,
+                        start_time=c.start_time,
+                        end_time=c.end_time,
+                        activity_type="Class",
+                        title=f"{c.course_id} - {c.title}",
+                        location=c.location,
+                    )
+                )
 
         # Basic fallback routine blocks
         for day in days:
             routine = weekly_routine[day]
-            routine.insert(0, RoutineBlock(
-                day=day,
-                start_time=wake,
-                end_time="08:00",
-                activity_type="Wakeup",
-                title="Morning Routine & Breakfast"
-            ))
-            routine.append(RoutineBlock(
-                day=day,
-                start_time="17:00",
-                end_time="18:30",
-                activity_type="Study",
-                title="Focused Study & Review"
-            ))
-            routine.append(RoutineBlock(
-                day=day,
-                start_time="19:00",
-                end_time="20:00",
-                activity_type="Gym",
-                title="Workout / Fitness"
-            ))
-            routine.append(RoutineBlock(
-                day=day,
-                start_time=sleep,
-                end_time="23:59",
-                activity_type="Sleep",
-                title="Night Sleep"
-            ))
+            routine.insert(
+                0,
+                RoutineBlock(
+                    day=day,
+                    start_time=wake,
+                    end_time="08:00",
+                    activity_type="Wakeup",
+                    title="Morning Routine & Breakfast",
+                ),
+            )
+            routine.append(
+                RoutineBlock(
+                    day=day,
+                    start_time="17:00",
+                    end_time="18:30",
+                    activity_type="Study",
+                    title="Focused Study & Review",
+                )
+            )
+            routine.append(
+                RoutineBlock(
+                    day=day,
+                    start_time="19:00",
+                    end_time="20:00",
+                    activity_type="Gym",
+                    title="Workout / Fitness",
+                )
+            )
+            routine.append(
+                RoutineBlock(
+                    day=day,
+                    start_time=sleep,
+                    end_time="23:59",
+                    activity_type="Sleep",
+                    title="Night Sleep",
+                )
+            )
 
         return FullLifeScheduleResponse(
             weekly_routine=weekly_routine,
             ai_insights=AIInsightsResponse(
                 summary="Full routine generated with fallback heuristics.",
-                warnings=[f"AI note: {str(e)}"],
-                suggestions=["Ensure wake and sleep times are adhered to consistently."]
-            )
+                warnings=[f"AI note: {e!s}"],
+                suggestions=[
+                    "Ensure wake and sleep times are adhered to consistently."
+                ],
+            ),
         )

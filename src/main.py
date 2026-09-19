@@ -1,7 +1,9 @@
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+
 from src.routers import ai
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -9,13 +11,14 @@ async def lifespan(app: FastAPI):
     yield
     # Cleanup logic
 
+
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="AI Assistant API",
     version="1.0.0",
     description="Analyzes schedules and provides smart feedback using AI.",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -27,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(ai.router, prefix="/api/v1")
+
 
 @app.get("/health")
 def health_check():
