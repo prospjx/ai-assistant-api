@@ -37,4 +37,4 @@ jobs:
           kubectl apply -f k8s/service.yaml
 
       - name: Check rollout status
-        run: kubectl rollout status deployment/scheduler-api -n ${{ github.ref_name }}
+        run: kubectl rollout status deployment/ai-assistant-api-deployment -n ${{ github.ref_name }}
