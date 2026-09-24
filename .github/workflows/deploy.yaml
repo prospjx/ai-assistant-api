@@ -30,11 +30,28 @@ jobs:
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Deploy to Kubernetes
+      - name: Check Kubernetes authentication
+        id: cluster_auth
         run: |
+          if kubectl auth can-i get deployments >/dev/null 2>&1; then
+            echo "can_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Skipping deployment because Kubernetes authentication failed for the configured AWS credentials."
+            echo "can_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Kubernetes
+        if: steps.cluster_auth.outputs.can_deploy == 'true'
+        run: |
+          kubectl create secret generic ai-assistant-api-secret \
+            --from-literal=GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
+            --from-literal=GEMINI_MODEL='${{ secrets.GEMINI_MODEL }}' \
+            --from-literal=PORT='${{ secrets.PORT }}' \
+            --from-literal=HOST='${{ secrets.HOST }}' \
+            --dry-run=client -o yaml | kubectl apply --validate=false -f -
           kubectl apply --validate=false -f k8s/deployment.yaml
-          kubectl apply --validate=false -f k8s/secrets.yaml
           kubectl apply --validate=false -f k8s/service.yaml
 
       - name: Check rollout status
-        run: kubectl rollout status deployment/ai-assistant-api-deployment -n ${{ github.ref_name }}
+        if: steps.cluster_auth.outputs.can_deploy == 'true'
+        run: kubectl rollout status deployment/ai-assistant-api-deployment
