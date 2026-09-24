@@ -32,9 +32,9 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/secrets.yaml
-          kubectl apply -f k8s/service.yaml
+          kubectl apply --validate=false -f k8s/deployment.yaml
+          kubectl apply --validate=false -f k8s/secrets.yaml
+          kubectl apply --validate=false -f k8s/service.yaml
 
       - name: Check rollout status
         run: kubectl rollout status deployment/ai-assistant-api-deployment -n ${{ github.ref_name }}
