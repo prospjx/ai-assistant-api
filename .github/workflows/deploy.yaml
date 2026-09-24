@@ -28,7 +28,10 @@ jobs:
         run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
       - name: Deploy to Kubernetes
-        run: kubectl apply -f k8s/
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/secrets.yaml
+          kubectl apply -f k8s/service.yaml
 
       - name: Check rollout status
         run: kubectl rollout status deployment/scheduler-api -n ${{ github.ref_name }}
