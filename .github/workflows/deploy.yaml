@@ -48,4 +48,13 @@ jobs:
 
       - name: Check rollout status
         run: |
-          kubectl rollout status deployment/ai-assistant-api-deployment --timeout=180s
+          if ! kubectl rollout status deployment/ai-assistant-api-deployment --timeout=120s; then
+            echo "::error::Rollout timed out or failed. Fetching pod diagnostics..."
+            echo "=== POD STATUS ==="
+            kubectl get pods -l app=ai-assistant-api -o wide
+            echo "=== POD EVENTS & DESCRIPTION ==="
+            kubectl describe pods -l app=ai-assistant-api
+            echo "=== POD LOGS ==="
+            kubectl logs -l app=ai-assistant-api --tail=100 --all-containers=true
+            exit 1
+          fi
