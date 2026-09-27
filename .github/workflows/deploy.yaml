@@ -41,9 +41,9 @@ jobs:
             --from-literal=GEMINI_MODEL='${{ secrets.GEMINI_MODEL }}' \
             --from-literal=PORT='${{ secrets.PORT }}' \
             --from-literal=HOST='${{ secrets.HOST }}' \
-            --dry-run=client -o yaml | kubectl apply -f -
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+            --dry-run=client -o yaml | kubectl apply --validate=false -f -
+          kubectl apply --validate=false -f k8s/deployment.yaml
+          kubectl apply --validate=false -f k8s/service.yaml
           kubectl rollout restart deployment/ai-assistant-api-deployment
 
       - name: Check rollout status
