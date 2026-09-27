@@ -1,24 +1,27 @@
 name: AI Assistant CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["AI Assistant CI"]
+    types:
+      - completed
     branches:
       - master
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
-      packages: write
+      packages: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Kubectl
-        uses: azure/setup-kubectl@v2.0
-        id: install
+        uses: azure/setup-kubectl@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -28,7 +31,13 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+        run: |
+          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+
+      - name: Verify cluster authentication
+        run: |
+          aws sts get-caller-identity
+          kubectl auth can-i get deployments --namespace default
 
       - name: Deploy to Kubernetes
         run: |
@@ -40,6 +49,8 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
+          kubectl rollout restart deployment/ai-assistant-api-deployment
 
       - name: Check rollout status
-        run: kubectl rollout status deployment/ai-assistant-api-deployment
+        run: |
+          kubectl rollout status deployment/ai-assistant-api-deployment --timeout=180s
