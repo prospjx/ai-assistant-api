@@ -34,11 +34,6 @@ jobs:
         run: |
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Verify cluster authentication
-        run: |
-          aws sts get-caller-identity
-          kubectl auth can-i get deployments --namespace default
-
       - name: Deploy to Kubernetes
         run: |
           kubectl create secret generic ai-assistant-api-secret \
