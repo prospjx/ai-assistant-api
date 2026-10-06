@@ -34,6 +34,11 @@ jobs:
         run: |
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
+      - name: Enable VPC CNI Prefix Delegation (Increases Pod Limit)
+        run: |
+          kubectl set env daemonset aws-node -n kube-system ENABLE_PREFIX_DELEGATION=true
+          kubectl set env daemonset aws-node -n kube-system WARM_PREFIX_TARGET=1
+
       - name: Deploy to Kubernetes
         run: |
           kubectl create secret generic ai-assistant-api-secret \
