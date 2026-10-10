@@ -4,7 +4,6 @@ from typing import Any
 
 from google import genai
 from google.genai import types
-
 from src.config import GEMINI_API_KEY, GEMINI_MODEL
 from src.schemas import (
     AIInsightsResponse,

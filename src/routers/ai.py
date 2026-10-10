@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-
 from src.schemas import (
     AIInsightsResponse,
     AnalyzeRequest,

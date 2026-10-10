@@ -2,7 +2,6 @@ import io
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
-
 from src.main import app
 from src.schemas import (
     AIInsightsResponse,
