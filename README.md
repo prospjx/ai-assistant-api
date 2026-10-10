@@ -4,6 +4,72 @@ An intelligent advisory and multimodal scheduling microservice powered by **Fast
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph Ingress ["API Ingress & Gateway Layer"]
+        Client["Client / CloudFront / Scheduler Gateway"]
+    end
+
+    subgraph Service ["AI Assistant Microservice (FastAPI :8003)"]
+        Router["FastAPI Router: /api/v1/analyze"]
+        
+        subgraph Endpoints ["API Endpoints"]
+            EP1["POST /extract-schedule<br/>(Multipart Form File)"]
+            EP2["POST /analyze<br/>(Schedule + Student Profile)"]
+            EP3["POST /full-schedule<br/>(Classes + Routine Preferences)"]
+        end
+
+        subgraph Core ["Processing & Services Layer"]
+            Vision["Multimodal Timetable Vision Parser"]
+            Advisor["Academic Workload & Balance Advisor"]
+            Routine["7-Day Life Routine Planner"]
+            Fallback["Heuristic Routine Fallback Generator<br/>(Timeout / Offline Shield)"]
+        end
+
+        subgraph Schemas ["Pydantic Validation Schemas"]
+            S1["ExtractScheduleResponse<br/>(list[ExtractedClass])"]
+            S2["AIInsightsResponse<br/>(summary, warnings, suggestions)"]
+            S3["FullLifeScheduleResponse<br/>(weekly_routine, ai_insights)"]
+        end
+    end
+
+    subgraph GoogleAI ["Google Gemini Developer API"]
+        Model["gemini-2.5-flash<br/>(Multimodal Vision + Structured JSON Schema)"]
+    end
+
+    Client -->|"HTTP POST"| Router
+    Router --> EP1
+    Router --> EP2
+    Router --> EP3
+
+    EP1 --> Vision
+    EP2 --> Advisor
+    EP3 --> Routine
+
+    Vision -->|"Image Bytes + Schema"| Model
+    Advisor -->|"Profile + Schedule Prompt"| Model
+    Routine -->|"Profile + Classes + Preferences"| Model
+
+    Model -.->|"Structured Class Timeslots"| Vision
+    Model -.->|"Structured JSON Insights"| Advisor
+    Model -.->|"Structured 7-Day JSON"| Routine
+
+    Routine -.->|"On Timeout / Failure"| Fallback
+
+    Vision --> S1
+    Advisor --> S2
+    Routine --> S3
+    Fallback --> S3
+
+    S1 --> Client
+    S2 --> Client
+    S3 --> Client
+```
+
+---
+
 ## Features
 
 - **Timetable Image Extraction (`POST /api/v1/analyze/extract-schedule`)**:
