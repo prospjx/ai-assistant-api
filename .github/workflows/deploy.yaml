@@ -23,6 +23,9 @@ jobs:
       - name: Install Kubectl
         uses: azure/setup-kubectl@v4
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -34,7 +37,7 @@ jobs:
         run: |
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Deploy to Kubernetes
+      - name: Ensure AI Assistant Secrets
         run: |
           kubectl create secret generic ai-assistant-api-secret \
             --from-literal=GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
@@ -42,19 +45,21 @@ jobs:
             --from-literal=PORT='${{ secrets.PORT }}' \
             --from-literal=HOST='${{ secrets.HOST }}' \
             --dry-run=client -o yaml | kubectl apply --validate=false -f -
-          kubectl apply --validate=false -f k8s/deployment.yaml
-          kubectl apply --validate=false -f k8s/service.yaml
-          kubectl rollout restart deployment/ai-assistant-api-deployment
 
-      - name: Check rollout status
+      - name: Deploy with Helm
         run: |
-          if ! kubectl rollout status deployment/ai-assistant-api-deployment --timeout=120s; then
-            echo "::error::Rollout timed out or failed. Fetching pod diagnostics..."
-            echo "=== POD STATUS ==="
-            kubectl get pods -l app=ai-assistant-api -o wide
-            echo "=== POD EVENTS & DESCRIPTION ==="
-            kubectl describe pods -l app=ai-assistant-api
-            echo "=== POD LOGS ==="
-            kubectl logs -l app=ai-assistant-api --tail=100 --all-containers=true
-            exit 1
-          fi
+          helm upgrade --install ai-assistant-api ./helm \
+            --set image.tag="v${{ github.event.workflow_run.run_number }}" \
+            --wait \
+            --timeout 120s
+
+      - name: Check rollout diagnostics on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed. Fetching pod diagnostics..."
+          echo "=== POD STATUS ==="
+          kubectl get pods -l app=ai-assistant-api -o wide
+          echo "=== POD EVENTS & DESCRIPTION ==="
+          kubectl describe pods -l app=ai-assistant-api
+          echo "=== POD LOGS ==="
+          kubectl logs -l app=ai-assistant-api --tail=100 --all-containers=true
