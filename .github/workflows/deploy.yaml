@@ -13,53 +13,28 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
-      contents: read
-      packages: read
+      contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout GitOps Repository
         uses: actions/checkout@v4
-
-      - name: Install Kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          repository: prospjx/gitops
+          token: ${{ secrets.GITOPS_PAT }}
+          ref: master
 
-      - name: Update kubeconfig
+      - name: Update AI Assistant Image Tag
         run: |
-          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+          IMAGE_TAG="v${{ github.event.workflow_run.run_number }}"
+          echo "Updating ai-assistant-api image tag to: $IMAGE_TAG"
+          sed -i "s/tag: .*/tag: \"$IMAGE_TAG\"/" charts/ai-assistant-api/values.yaml
 
-      - name: Ensure AI Assistant Secrets
-        run: |
-          kubectl create secret generic ai-assistant-api-secret \
-            --from-literal=GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
-            --from-literal=GEMINI_MODEL='${{ secrets.GEMINI_MODEL }}' \
-            --from-literal=PORT='${{ secrets.PORT }}' \
-            --from-literal=HOST='${{ secrets.HOST }}' \
-            --dry-run=client -o yaml | kubectl apply --validate=false -f -
-
-      - name: Deploy with Helm
-        run: |
-          helm upgrade --install ai-assistant-api ./helm \
-            --set image.tag="v${{ github.event.workflow_run.run_number }}" \
-            --wait \
-            --timeout 120s
-
-      - name: Check rollout diagnostics on failure
-        if: failure()
-        run: |
-          echo "::error::Deployment failed. Fetching pod diagnostics..."
-          echo "=== POD STATUS ==="
-          kubectl get pods -l app=ai-assistant-api -o wide
-          echo "=== POD EVENTS & DESCRIPTION ==="
-          kubectl describe pods -l app=ai-assistant-api
-          echo "=== POD LOGS ==="
-          kubectl logs -l app=ai-assistant-api --tail=100 --all-containers=true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/ai-assistant-api/values.yaml
+          if git diff --staged --quiet; then
+            echo "No changes in image tag."
+          else
+            git commit -m "chore(ai-assistant-api): bump image tag to $IMAGE_TAG"
+            git push origin master
+          fi
